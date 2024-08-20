@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Airsoft Bomb</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5dc; /* Cream white background */
+            margin: 0;
+            position: relative;
+            transition: background-color 0.5s;
+        }
+        .scoreboard {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .scoreboard div {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        #terroristsScore {
+            color: orange;
+        }
+        #counterTerroristsScore {
+            color: blue;
+        }
+        .bomb-container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            z-index: 1;
+        }
+        .time {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        input, button {
+            font-size: 1em;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .input-container, .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .input-container input {
+            margin: 0;
+            text-align: center;
+        }
+        .message {
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Scoreboard -->
+    <div class="scoreboard">
+        <div id="terroristsScore">0</div>
+        <div id="counterTerroristsScore">0</div>
+    </div>
+    
+    <!-- Bomb and controls -->
+    <div class="bomb-container">
+        <div class="time" id="display">00:00:00</div>
+        <div class="input-container">
+            <input type="text" id="codeInput" placeholder="Enter Code">
+        </div>
+        <div class="button-container">
+            <button onclick="armBomb()">Arm Bomb</button>
+            <button onclick="defuseBomb()">Defuse Bomb</button>
+            <button onclick="resetScore()">Reset Score</button>
+            <button onclick="ignoreLastRound()">Ignore Last Round</button>
+        </div>
+        <div id="message" class="message hidden"></div>
+    </div>
+
+    <!-- Audio elements for sound effects -->
+    <audio id="armSound" src="Sounds/plant.mp3" preload="auto"></audio>
+    <audio id="disarmSound" src="Sounds/defuse.mp3" preload="auto"></audio>
+    <audio id="beepSound" src="Sounds/beep.WAV" preload="auto"></audio>
+    <audio id="explosionSound" src="Sounds/explode.WAV" preload="auto"></audio>
+
+    <script>
+        let bombTimer;
+        let beepInterval;
+        let totalTimeInSeconds = 0;
+        let isBombArmed = false;
+        let isBombExploded = false;
+        let terroristsWins = 0;
+        let counterTerroristsWins = 0;
+        let lastRoundWinner = null;
+
+        function updateDisplay() {
+            const hours = Math.floor(totalTimeInSeconds / 3600);
+            const minutes = Math.floor((totalTimeInSeconds % 3600) / 60);
+            const seconds = totalTimeInSeconds % 60;
+            document.getElementById('display').textContent = 
+                String(hours).padStart(2, '0') + ':' + 
+                String(minutes).padStart(2, '0') + ':' + 
+                String(seconds).padStart(2, '0');
+        }
+
+        function playSound(id) {
+            const sound = document.getElementById(id);
+            if (sound) {
+                sound.play().catch(error => console.error('Error playing sound:', error));
+            }
+        }
+
+        function startBeeping() {
+            beepInterval = setInterval(() => {
+                playSound('beepSound');
+            }, 1000); // Beep every second
+        }
+
+        function stopBeeping() {
+            clearInterval(beepInterval);
+        }
+
+        function showMessage(message, isError) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = message;
+            messageElement.style.color = isError ? 'red' : 'green';
+            messageElement.classList.remove('hidden');
+        }
+
+        function updateScoreboard() {
+            document.getElementById('terroristsScore').textContent = terroristsWins;
+            document.getElementById('counterTerroristsScore').textContent = counterTerroristsWins;
+        }
+
+        function setBackgroundColor(color) {
+            document.body.style.backgroundColor = color;
+        }
+
+        function armBomb() {
+            if (isBombArmed) {
+                showMessage('Bomb is already armed.', true); // Show error message
+                return;
+            }
+
+            const codeInput = document.getElementById('codeInput');
+            const code = codeInput.value;
+            if (code === '72119') {
+                totalTimeInSeconds = 45; // Set countdown for 45 seconds
+                isBombArmed = true;
+                isBombExploded = false;
+                updateDisplay();
+                setBackgroundColor('#f5f5dc'); // Set background color to cream white
+                startBeeping(); // Start beeping sound
+
+                bombTimer = setInterval(() => {
+                    if (totalTimeInSeconds <= 0) {
+                        clearInterval(bombTimer);
+                        stopBeeping(); // Stop beeping sound
+                        isBombArmed = false;
+                        isBombExploded = true;
+                        setBackgroundColor('red'); // Set background color to red before explosion
+                        showMessage('Terrorists Win!', true); // Show "Terrorists Win!" message
+                        playSound('explosionSound'); // Play explosion sound
+                        terroristsWins++; // Increment Terrorists wins
+                        lastRoundWinner = 'terrorists'; // Track last round winner
+                        updateScoreboard(); // Update the scoreboard
+
+                        // After 1 second, change background color to cream white
+                        setTimeout(() => {
+                            setBackgroundColor('#f5f5dc'); // Change background to cream white
+                        }, 3000);
+                        return;
+                    }
+
+                    if (totalTimeInSeconds <= 10) {
+                        setBackgroundColor('black'); // Change background to orange when 10 seconds are left
+                    } else if (totalTimeInSeconds <= 20) {
+                        setBackgroundColor('red'); // Change background to red when 20 seconds are left
+                    } else {
+                        setBackgroundColor('#f5f5dc'); // Cream white background
+                    }
+
+                    totalTimeInSeconds--;
+                    updateDisplay();
+                }, 1000);
+
+                playSound('armSound'); // Play sound when bomb is armed
+                showMessage('Bomb armed and started!', false); // Show success message
+            } else {
+                showMessage('Incorrect arm code. Bomb not armed.', true); // Show error message
+            }
+            // Clear input field after arming
+            codeInput.value = '';
+        }
+
+        function defuseBomb() {
+            if (!isBombArmed) {
+                showMessage('Bomb is not armed.', true); // Show error message
+                return;
+            }
+
+            if (isBombExploded) {
+                showMessage('Bomb has already exploded.', true); // Show error message
+                return;
+            }
+
+            const codeInput = document.getElementById('codeInput');
+            const code = codeInput.value;
+            if (code === '72119') {
+                if (bombTimer) clearInterval(bombTimer);
+                stopBeeping(); // Stop beeping sound
+                isBombArmed = false;
+                document.getElementById('display').textContent = '00:00:00';
+                setBackgroundColor('#f5f5dc'); // Reset background color to cream white
+                showMessage('Counter-Terrorists Win!', false); // Show "Counter-Terrorists Win!" message
+                playSound('disarmSound'); // Play sound when bomb is defused
+                counterTerroristsWins++; // Increment Counter-Terrorists wins
+                lastRoundWinner = 'counterTerrorists'; // Track last round winner
+                updateScoreboard(); // Update the scoreboard
+            } else {
+                showMessage('Incorrect disarm code. Bomb not defused.', true); // Show error message
+            }
+            // Clear input field after disarming
+            codeInput.value = '';
+        }
+
+        function resetScore() {
+            terroristsWins = 0;
+            counterTerroristsWins = 0;
+            updateScoreboard(); // Update the scoreboard
+            showMessage('Scores have been reset.', false); // Show success message
+        }
+
+        function ignoreLastRound() {
+            if (lastRoundWinner) {
+                if (lastRoundWinner === 'terrorists') {
+                    terroristsWins--;
+                } else if (lastRoundWinner === 'counterTerrorists') {
+                    counterTerroristsWins--;
+                }
+                lastRoundWinner = null; // Clear last round winner
+                updateScoreboard(); // Update the scoreboard
+                showMessage('Last round has been ignored.', false); // Show success message
+            } else {
+                showMessage('No last round to ignore.', true); // Show error message
+            }
+        }
+    </script>
+</body>
+</html>
