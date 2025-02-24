@@ -1,1 +1,1 @@
-https://airsoftvirtualbomb.github.io/AirsoftVirtualBomb/
+https://airsoftghosttactical.github.io/AirsoftVirtualBomb/
